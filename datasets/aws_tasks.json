@@ -1,0 +1,50 @@
+[
+  {
+    "task": "Write a Python function that takes an S3 bucket name and returns a list of all object keys in the bucket using boto3, handling pagination.",
+    "format": "python",
+    "criteria": [
+      "Uses boto3 and a paginator (or a continuation-token loop) so buckets with more than 1000 objects are fully listed",
+      "Returns a list of key strings rather than the raw API response"
+    ]
+  },
+  {
+    "task": "Write a Python function that sends a message string to an SQS queue given its queue URL and returns the MessageId.",
+    "format": "python",
+    "criteria": [
+      "Calls send_message on an SQS boto3 client with the QueueUrl and MessageBody parameters",
+      "Returns the MessageId value from the response"
+    ]
+  },
+  {
+    "task": "Create an IAM policy document that allows read-only access (GetObject and ListBucket) to an S3 bucket named 'my-app-logs'.",
+    "format": "json",
+    "criteria": [
+      "Includes Version '2012-10-17' and a Statement with Effect 'Allow' for s3:GetObject and s3:ListBucket",
+      "Specifies both the bucket ARN (arn:aws:s3:::my-app-logs) and the object ARN (arn:aws:s3:::my-app-logs/*) as resources"
+    ]
+  },
+  {
+    "task": "Write an S3 bucket lifecycle configuration that transitions objects to GLACIER after 90 days and deletes them after 365 days.",
+    "format": "json",
+    "criteria": [
+      "Contains a Rules array with one enabled rule (Status 'Enabled') with a Transitions entry of Days 90 and StorageClass GLACIER",
+      "Includes an Expiration setting with Days set to 365"
+    ]
+  },
+  {
+    "task": "Write a regular expression that matches a valid AWS S3 bucket ARN such as arn:aws:s3:::my-bucket-name.",
+    "format": "regex",
+    "criteria": [
+      "Matches the literal prefix 'arn:aws:s3:::' followed by a bucket name of lowercase letters, digits, dots, or hyphens",
+      "Is anchored with ^ and $ so that extra surrounding text does not match"
+    ]
+  },
+  {
+    "task": "Write a regular expression that matches an AWS EC2 instance ID, which is 'i-' followed by either 8 or 17 lowercase hexadecimal characters.",
+    "format": "regex",
+    "criteria": [
+      "Matches 'i-' followed by exactly 8 or exactly 17 characters in the set [0-9a-f]",
+      "Is anchored and rejects IDs with other lengths or uppercase/non-hex characters"
+    ]
+  }
+]

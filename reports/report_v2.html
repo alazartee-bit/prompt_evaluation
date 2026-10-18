@@ -1,0 +1,90 @@
+<html><head><meta charset='utf-8'></head><body style='font-family:sans-serif;max-width:800px;margin:auto'><h1>Prompt v2: average 9.5 / 10</h1><h3>Case 1 (python): 9.5/10</h3><p><b>Task:</b> Write a Python function that takes an S3 bucket name and returns a list of all object keys in the bucket using boto3, handling pagination.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The answer meets both criteria: it uses a paginator and returns a list of key strings. It also handles empty buckets correctly. Only minor extras such as error handling and flexibility are missing.</p><p><b>Weaknesses:</b> No error handling for missing buckets or access denied (not required by the task); Builds the full list in memory, which could be heavy for very large buckets; no generator option mentioned; Does not allow an injected client or a prefix parameter, which limits flexibility and testability</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```python
+import boto3
+
+
+def list_s3_object_keys(bucket_name):
+    &quot;&quot;&quot;Return a list of all object keys in the given S3 bucket.
+
+    Uses the list_objects_v2 paginator so buckets with more than
+    1,000 objects are fully listed.
+    &quot;&quot;&quot;
+    s3 = boto3.client(&quot;s3&quot;)
+    paginator = s3.get_paginator(&quot;list_objects_v2&quot;)
+    keys = []
+    for page in paginator.paginate(Bucket=bucket_name):
+        for obj in page.get(&quot;Contents&quot;, []):
+            keys.append(obj[&quot;Key&quot;])
+    return keys
+```
+
+The `list_objects_v2` paginator handles continuation tokens automatically, so listings beyond 1,000 keys are complete. Using `page.get(&quot;Contents&quot;, [])` keeps empty buckets from raising a `KeyError`.</pre><hr><h3>Case 2 (python): 9.5/10</h3><p><b>Task:</b> Write a Python function that sends a message string to an SQS queue given its queue URL and returns the MessageId.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The answer meets both criteria: it calls send_message with QueueUrl and MessageBody and returns MessageId. The minor weaknesses are the per-call client creation and the lack of FIFO support in the signature.</p><p><b>Weaknesses:</b> Creates a new boto3 client on every call, which is inefficient and offers no way to inject a client or region for testing; No input validation or explicit error handling, though propagating the error is documented and reasonable; The FIFO note is only prose; the function has no optional parameters to support FIFO queues</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```python
+import boto3
+
+
+def send_sqs_message(queue_url: str, message: str) -&gt; str:
+    &quot;&quot;&quot;Send a message string to an SQS queue and return its MessageId.
+
+    Args:
+        queue_url: The URL of the target SQS queue.
+        message: The message body to send.
+
+    Returns:
+        The MessageId assigned by SQS.
+
+    Raises:
+        botocore.exceptions.ClientError: If SQS rejects the request.
+    &quot;&quot;&quot;
+    sqs = boto3.client(&quot;sqs&quot;)
+    response = sqs.send_message(QueueUrl=queue_url, MessageBody=message)
+    return response[&quot;MessageId&quot;]
+```
+
+The function calls `send_message` with `QueueUrl` and `MessageBody` and returns `MessageId` from the response. Errors propagate as `ClientError` so the caller can handle them. For FIFO queues, you would also need to pass `MessageGroupId`.</pre><hr><h3>Case 3 (json): 9.5/10</h3><p><b>Task:</b> Create an IAM policy document that allows read-only access (GetObject and ListBucket) to an S3 bucket named &#x27;my-app-logs&#x27;.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The policy is valid, least-privilege, and uses the correct resource ARNs for each action, meeting both criteria. Only trivial omissions exist.</p><p><b>Weaknesses:</b> Does not combine into one statement, though splitting is actually more correct, so a rigid checker might look for both actions together; No mention of optional extras like s3:GetObjectVersion or attaching the policy</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```json
+{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [
+    {
+      &quot;Sid&quot;: &quot;ListBucket&quot;,
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;s3:ListBucket&quot;,
+      &quot;Resource&quot;: &quot;arn:aws:s3:::my-app-logs&quot;
+    },
+    {
+      &quot;Sid&quot;: &quot;GetObjects&quot;,
+      &quot;Effect&quot;: &quot;Allow&quot;,
+      &quot;Action&quot;: &quot;s3:GetObject&quot;,
+      &quot;Resource&quot;: &quot;arn:aws:s3:::my-app-logs/*&quot;
+    }
+  ]
+}
+```
+`s3:ListBucket` applies to the bucket ARN, while `s3:GetObject` applies to the objects (`/*`), so the two actions are split into separate statements with the correct resources.</pre><hr><h3>Case 4 (json): 9.5/10</h3><p><b>Task:</b> Write an S3 bucket lifecycle configuration that transitions objects to GLACIER after 90 days and deletes them after 365 days.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The answer satisfies both criteria: one enabled rule with a 90-day GLACIER transition and a 365-day expiration. The JSON is valid for the S3 API, with only minor extras missing.</p><p><b>Weaknesses:</b> Does not show the CLI command or how to apply the configuration, though the task didn&#x27;t explicitly require it.; No mention of the ~90-day minimum storage duration for Glacier or of the XML/Terraform alternatives, a minor omission.</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```json
+{
+  &quot;Rules&quot;: [
+    {
+      &quot;ID&quot;: &quot;TransitionToGlacierAndExpire&quot;,
+      &quot;Status&quot;: &quot;Enabled&quot;,
+      &quot;Filter&quot;: {
+        &quot;Prefix&quot;: &quot;&quot;
+      },
+      &quot;Transitions&quot;: [
+        {
+          &quot;Days&quot;: 90,
+          &quot;StorageClass&quot;: &quot;GLACIER&quot;
+        }
+      ],
+      &quot;Expiration&quot;: {
+        &quot;Days&quot;: 365
+      }
+    }
+  ]
+}
+```
+
+An empty prefix filter applies the rule to every object in the bucket. The `Days` values are counted from object creation, so objects move to GLACIER at day 90 and are deleted at day 365.</pre><hr><h3>Case 5 (regex): 9.5/10</h3><p><b>Task:</b> Write a regular expression that matches a valid AWS S3 bucket ARN such as arn:aws:s3:::my-bucket-name.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The regex meets both criteria: it has the correct literal prefix with a valid bucket-name character set, and it is fully anchored. Its extra partition support and naming rules are accurate, with only minor omissions.</p><p><b>Weaknesses:</b> Does not reject the reserved prefixes (xn--, sthree-) or suffixes (-s3alias, --ol-s3), though this is minor.; Does not cover the aws-iso partitions.; Does not reject dot-hyphen adjacency, which S3 discourages but allows.; Is somewhat more complex than the task needs, though the extra rules are correct.</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```regex
+^arn:aws(?:-cn|-us-gov)?:s3:::(?!\d{1,3}(?:\.\d{1,3}){3}$)(?!.*\.\.)[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+```
+It anchors the `arn:&lt;partition&gt;:s3:::` prefix, with `aws`, `aws-cn` and `aws-us-gov` as the partitions. It then enforces S3 bucket naming rules: 3–63 characters of lowercase letters, digits, hyphens and periods, starting and ending with a letter or digit, with no consecutive periods and no IP-address-style names. It does not match object ARNs that have a `/key` suffix.</pre><hr><h3>Case 6 (regex): 9.5/10</h3><p><b>Task:</b> Write a regular expression that matches an AWS EC2 instance ID, which is &#x27;i-&#x27; followed by either 8 or 17 lowercase hexadecimal characters.</p><p><b>Model score:</b> 9/10 &nbsp; <b>Syntax score:</b> 10/10 </p><p><b>Grader:</b> The regex `^i-(?:[0-9a-f]{8}|[0-9a-f]{17})$` precisely satisfies both criteria: correct character class, exact lengths, and anchoring. Only trivial edge-case caveats (trailing newline with `$`) keep it from being perfect.</p><p><b>Weaknesses:</b> `$` may match before a trailing newline in some engines (e.g., Python, PCRE), a minor edge case; Explanation mentions only length rejection, not uppercase/non-hex rejection explicitly</p><pre style='white-space:pre-wrap;background:#f4f4f4;padding:8px'>```regex
+^i-(?:[0-9a-f]{8}|[0-9a-f]{17})$
+```
+The alternation inside a non-capturing group allows exactly 8 or exactly 17 hex characters, and the `^` and `$` anchors stop it from matching other lengths such as 9 to 16 characters.</pre><hr></body></html>
