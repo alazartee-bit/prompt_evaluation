@@ -46,14 +46,14 @@ HTML reports are written to the `reports` folder. Each run calls the API, so it 
 
 ## Results
 
-<!-- After your first run, paste the table printed by run_eval.py here, with the model name and number of cases. -->
+6 test cases (2 Python, 2 JSON, 2 regex), graded with claude-sonnet-5-5.
 
-Saved 6 test cases to datasets/aws_tasks.json
-Running 6 test cases for prompts: v1, v2
+| prompt | final | model | syntax |
+|---|---|---|---|
+| v1 | 9.3 | 8.7 | 10.0 |
+| v2 | 9.5 | 9.0 | 10.0 |
 
-prompt     final   model  syntax
-v1           9.3     8.7    10.0
-v2           9.5     9.0    10.0
+Both prompts produced valid code every time. v2 scored slightly higher with the model grader, but with 6 cases a gap this small is within noise. A larger, harder dataset is the next step.
 
 ## Limits
 
